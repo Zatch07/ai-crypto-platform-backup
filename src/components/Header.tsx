@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, Filter, LogOut, User } from "lucide-react";
+import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, Filter, LogOut, User, Calculator } from "lucide-react";
 import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +86,13 @@ const Header = () => {
             >
               <Filter className="w-4 h-4" />
               <span>Screener</span>
+            </Link>
+            <Link
+              to="/dca"
+              className="text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-1"
+            >
+              <Calculator className="w-4 h-4 text-orange-400" />
+              <span>DCA Simulator</span>
             </Link>
             <Link
               to="/chat"
@@ -192,6 +199,13 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Screener
+              </Link>
+              <Link
+                to="/dca"
+                className="text-gray-300 hover:text-white block px-3 py-2 text-base font-medium transition-colors duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                DCA Simulator
               </Link>
               <Link
                 to="/chat"
