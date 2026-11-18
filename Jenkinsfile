@@ -95,21 +95,19 @@ pipeline {
                             ${LATEST_TAG}
                     """
 
-                    // 4. Smoke Test the new container on /api/health before cutting traffic
+                    // 4. Smoke Test the new container on /api/health directly inside container
                     echo "Validating health of ${targetContainer} on /api/health..."
                     sh """
-                        TARGET_IP=\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${targetContainer})
-                        
                         for i in \$(seq 1 12); do
-                            if [ -n "\$TARGET_IP" ] && curl -s -f "http://\${TARGET_IP}:3000/api/health" | grep -q '"status":"UP"'; then
-                                echo "Health check PASSED on \${targetContainer} (\${TARGET_IP}:3000)!"
+                            if docker exec ${targetContainer} wget -q -O - http://127.0.0.1:3000/api/health 2>/dev/null | grep -q '"status":"UP"'; then
+                                echo "Health check PASSED on ${targetContainer} (http://127.0.0.1:3000/api/health)!"
                                 exit 0
                             fi
-                            echo "Waiting for \${targetContainer} to initialize (\$i/12)..."
+                            echo "Waiting for ${targetContainer} to initialize (\$i/12)..."
                             sleep 2
                         done
 
-                        echo "ERROR: Health check FAILED on \${targetContainer}. Rolling back..."
+                        echo "ERROR: Health check FAILED on ${targetContainer}. Rolling back..."
                         docker logs ${targetContainer}
                         docker rm -f ${targetContainer} || true
                         exit 1
@@ -118,17 +116,20 @@ pipeline {
                     // 5. Zero-Downtime Switchover via Nginx Reverse Proxy on port 3000
                     echo "Health check succeeded. Switching live traffic on port 3000 to ${targetContainer}..."
                     sh """
-                        # Create Nginx routing configuration pointing to target container
-                        NGINX_CONF="upstream app_upstream { server ${targetContainer}:3000; } server { listen 3000; location / { proxy_pass http://app_upstream; proxy_http_version 1.1; proxy_set_header Upgrade \\\$http_upgrade; proxy_set_header Connection 'upgrade'; proxy_set_header Host \\\$host; proxy_set_header X-Real-IP \\\$remote_addr; proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \\\$scheme; } }"
+                        # Remove legacy non-proxy container if still binding port 3000
+                        docker rm -f ai-crypto-app 2>/dev/null || true
+
+                        # Nginx config forwarding host port 3000 (proxy port 80) to target container port 3000
+                        NGINX_CONF="upstream app_upstream { server ${targetContainer}:3000; } server { listen 80; location / { proxy_pass http://app_upstream; proxy_http_version 1.1; proxy_set_header Upgrade \\\$http_upgrade; proxy_set_header Connection 'upgrade'; proxy_set_header Host \\\$host; proxy_set_header X-Real-IP \\\$remote_addr; proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \\\$scheme; } }"
 
                         # If Nginx proxy container is not running, start it
                         if ! docker ps --filter "name=${PROXY_NAME}" --filter "status=running" -q | grep -q .; then
                             echo "Initializing Nginx reverse proxy on port 3000..."
-                            docker rm -f ${PROXY_NAME} || true
+                            docker rm -f ${PROXY_NAME} 2>/dev/null || true
                             docker run -d \
                                 --name ${PROXY_NAME} \
                                 --network ${NETWORK_NAME} \
-                                -p 3000:3000 \
+                                -p 3000:80 \
                                 --restart unless-stopped \
                                 nginx:alpine
 
