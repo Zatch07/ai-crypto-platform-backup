@@ -16,6 +16,7 @@ import Screener from "./pages/Screener";
 import DCASimulator from "./pages/DCASimulator";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { PriceAlertFloatingButton } from "@/components/PriceAlertFloatingButton";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <PriceAlertFloatingButton />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />

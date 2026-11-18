@@ -247,19 +247,6 @@ const Header = () => {
           </div>
         )}
       </div>
-
-      {/* Floating Action Pill on Mobile screens (thumb-friendly, doesn't crowd header) */}
-      <div className="md:hidden fixed bottom-6 right-6 z-40">
-        <PriceAlertDialog trigger={
-          <button
-            type="button"
-            aria-label="Price Alerts"
-            className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black shadow-lg shadow-yellow-500/30 hover:scale-105 active:scale-95 transition-all"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
-        } />
-      </div>
     </header>
   );
 };
