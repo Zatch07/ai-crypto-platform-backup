@@ -6,10 +6,17 @@ pipeline {
         disableConcurrentBuilds()
     }
 
+    // Ping GitHub repository every 1 minute for code updates
+    triggers {
+        pollSCM('* * * * *')
+    }
+
     environment {
-        APP_NAME   = 'ai-crypto-platform'
-        IMAGE_TAG  = "${APP_NAME}:${BUILD_NUMBER}"
-        LATEST_TAG = "${APP_NAME}:latest"
+        APP_NAME     = 'ai-crypto-platform'
+        IMAGE_TAG    = "${APP_NAME}:${BUILD_NUMBER}"
+        LATEST_TAG   = "${APP_NAME}:latest"
+        NETWORK_NAME = 'crypto-network'
+        PROXY_NAME   = 'ai-crypto-proxy'
     }
 
     stages {
@@ -25,11 +32,9 @@ pipeline {
                 script {
                     echo 'Injecting environment variables from Jenkins Credentials...'
                     try {
-                        // Securely inject .env from Jenkins "Secret file" credential (ID: crypto-env-file)
-                        // This keeps all secrets out of git, commit history, and console logs.
                         withCredentials([file(credentialsId: 'crypto-env-file', variable: 'SECRET_ENV')]) {
                             sh 'cp $SECRET_ENV .env'
-                            echo 'Successfully injected .env from Jenkins Credential Store (crypto-env-file).'
+                            echo 'Successfully injected .env from Jenkins Credential Store.'
                         }
                     } catch (Exception e) {
                         if (fileExists('.env')) {
@@ -44,10 +49,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                echo "Building production Docker image: ${IMAGE_TAG}..."
-                // Only pass NEXT_PUBLIC_* variables to build-args.
-                // Private keys (CLERK_SECRET_KEY, SUPABASE_SECRET_KEY) are NEVER passed to build-args
-                // so they are never embedded in the image layers or history.
+                echo "Building Docker image: ${IMAGE_TAG}..."
                 sh '''
                     set -a
                     . ./.env
@@ -64,70 +66,101 @@ pipeline {
             }
         }
 
-        stage('Container Smoke Test') {
+        stage('Blue/Green Deployment') {
             steps {
-                echo 'Performing pre-deployment smoke test...'
                 script {
-                    def testContainer = "test-${APP_NAME}-${BUILD_NUMBER}"
-                    try {
-                        sh "docker run -d --name ${testContainer} -p 3001:3000 --env-file .env ${LATEST_TAG}"
-                        
-                        // Probe container via direct Docker network IP or host mapping with retries
-                        sh '''
-                            CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ''' + testContainer + ''')
-                            
-                            for i in $(seq 1 10); do
-                                if [ -n "$CONTAINER_IP" ] && curl -s -f "http://${CONTAINER_IP}:3000" > /dev/null; then
-                                    echo "Smoke test passed via container IP (${CONTAINER_IP}:3000)!"
-                                    exit 0
-                                elif curl -s -f http://host.docker.internal:3001 > /dev/null 2>&1; then
-                                    echo "Smoke test passed via host.docker.internal:3001!"
-                                    exit 0
-                                elif curl -s -f http://localhost:3001 > /dev/null 2>&1; then
-                                    echo "Smoke test passed via localhost:3001!"
-                                    exit 0
-                                fi
-                                echo "Waiting for container to initialize ($i/10)..."
-                                sleep 2
-                            done
-                            echo "Smoke test failed: Container did not respond."
-                            docker logs ''' + testContainer + '''
-                            exit 1
-                        '''
-                    } finally {
-                        sh "docker rm -f ${testContainer} || true"
-                    }
-                }
-            }
-        }
+                    echo 'Initiating Zero-Downtime Blue/Green Deployment...'
 
-        stage('Deploy Live Container') {
-            steps {
-                echo 'Deploying live container on port 3000...'
-                sh '''
-                    docker stop ai-crypto-app || true
-                    docker rm ai-crypto-app || true
-                    docker run -d \
-                        --name ai-crypto-app \
-                        --restart unless-stopped \
-                        -p 3000:3000 \
-                        --env-file .env \
-                        ${LATEST_TAG}
-                '''
-                echo 'Deployment successful! Application is running on http://localhost:3000'
+                    // 1. Ensure dedicated bridge network exists
+                    sh "docker network create ${NETWORK_NAME} || true"
+
+                    // 2. Identify currently active container (Blue vs Green)
+                    def isBlueRunning = sh(script: "docker ps --filter 'name=ai-crypto-blue' --filter 'status=running' -q", returnStdout: true).trim()
+                    def targetSlot = isBlueRunning ? 'green' : 'blue'
+                    def activeSlot = isBlueRunning ? 'blue'  : 'green'
+                    def targetContainer = "ai-crypto-${targetSlot}"
+                    def activeContainer = "ai-crypto-${activeSlot}"
+
+                    echo "Currently Active Slot: ${isBlueRunning ? 'BLUE' : 'GREEN'}"
+                    echo "Deploying New Version To: ${targetSlot.toUpperCase()} (${targetContainer})"
+
+                    // 3. Clean up any stale container on the target slot and deploy new version
+                    sh """
+                        docker rm -f ${targetContainer} || true
+                        docker run -d \
+                            --name ${targetContainer} \
+                            --network ${NETWORK_NAME} \
+                            --restart unless-stopped \
+                            --env-file .env \
+                            ${LATEST_TAG}
+                    """
+
+                    // 4. Smoke Test the new container on /api/health before cutting traffic
+                    echo "Validating health of ${targetContainer} on /api/health..."
+                    sh """
+                        TARGET_IP=\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${targetContainer})
+                        
+                        for i in \$(seq 1 12); do
+                            if [ -n "\$TARGET_IP" ] && curl -s -f "http://\${TARGET_IP}:3000/api/health" | grep -q '"status":"UP"'; then
+                                echo "Health check PASSED on \${targetContainer} (\${TARGET_IP}:3000)!"
+                                exit 0
+                            fi
+                            echo "Waiting for \${targetContainer} to initialize (\$i/12)..."
+                            sleep 2
+                        done
+
+                        echo "ERROR: Health check FAILED on \${targetContainer}. Rolling back..."
+                        docker logs ${targetContainer}
+                        docker rm -f ${targetContainer} || true
+                        exit 1
+                    """
+
+                    // 5. Zero-Downtime Switchover via Nginx Reverse Proxy on port 3000
+                    echo "Health check succeeded. Switching live traffic on port 3000 to ${targetContainer}..."
+                    sh """
+                        # Create Nginx routing configuration pointing to target container
+                        NGINX_CONF="upstream app_upstream { server ${targetContainer}:3000; } server { listen 3000; location / { proxy_pass http://app_upstream; proxy_http_version 1.1; proxy_set_header Upgrade \\\$http_upgrade; proxy_set_header Connection 'upgrade'; proxy_set_header Host \\\$host; proxy_set_header X-Real-IP \\\$remote_addr; proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \\\$scheme; } }"
+
+                        # If Nginx proxy container is not running, start it
+                        if ! docker ps --filter "name=${PROXY_NAME}" --filter "status=running" -q | grep -q .; then
+                            echo "Initializing Nginx reverse proxy on port 3000..."
+                            docker rm -f ${PROXY_NAME} || true
+                            docker run -d \
+                                --name ${PROXY_NAME} \
+                                --network ${NETWORK_NAME} \
+                                -p 3000:3000 \
+                                --restart unless-stopped \
+                                nginx:alpine
+
+                            sleep 2
+                        fi
+
+                        # Atomically reload Nginx configuration (0ms downtime)
+                        docker exec ${PROXY_NAME} sh -c "echo '\$NGINX_CONF' > /etc/nginx/conf.d/default.conf && nginx -s reload"
+                        echo "Live traffic successfully switched to ${targetContainer} on port 3000!"
+                    """
+
+                    // 6. Gracefully decommission the previous active slot
+                    if (isBlueRunning || sh(script: "docker ps --filter 'name=${activeContainer}' --filter 'status=running' -q", returnStdout: true).trim()) {
+                        echo "Stopping and removing previous container: ${activeContainer}..."
+                        sh "docker stop ${activeContainer} || true"
+                        sh "docker rm ${activeContainer} || true"
+                    }
+
+                    echo "Zero-Downtime Blue/Green deployment complete! Active: ${targetSlot.toUpperCase()}"
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline succeeded! Image ${IMAGE_TAG} is live."
+            echo "Pipeline succeeded! New version is serving on http://localhost:3000"
         }
         failure {
-            echo 'Pipeline failed. Please inspect stage logs above.'
+            echo 'Pipeline failed. If deployment failed health check, traffic remained on previous active slot (auto-rollback).'
         }
         always {
-            // Clean up injected .env file from the Jenkins agent workspace for security
             sh 'rm -f .env || true'
         }
     }
