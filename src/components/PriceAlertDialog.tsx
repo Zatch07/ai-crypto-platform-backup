@@ -22,10 +22,15 @@ import {
 } from 'lucide-react';
 import {
   usePriceAlerts,
-  POPULAR_ALERT_COINS,
 } from '@/hooks/usePriceAlerts';
+import { COMPREHENSIVE_COINS, CryptoCoin } from '@/data/cryptoList';
+import { SearchableCoinSelect } from '@/components/SearchableCoinSelect';
 
-export function PriceAlertDialog() {
+interface PriceAlertDialogProps {
+  trigger?: React.ReactNode;
+}
+
+export function PriceAlertDialog({ trigger }: PriceAlertDialogProps = {}) {
   const {
     alerts,
     activeCount,
@@ -42,20 +47,16 @@ export function PriceAlertDialog() {
   const [open, setOpen] = useState(false);
 
   const selectedCoin =
-    POPULAR_ALERT_COINS.find((c) => c.id === selectedCoinId) ||
-    POPULAR_ALERT_COINS[0];
+    COMPREHENSIVE_COINS.find((c) => c.id === selectedCoinId) ||
+    COMPREHENSIVE_COINS[0];
 
-  const handleSelectCoin = (coinId: string) => {
-    setSelectedCoinId(coinId);
-    const coin = POPULAR_ALERT_COINS.find((c) => c.id === coinId);
-    if (coin) {
-      // Suggest reasonable target prices
-      const defaultTarget =
-        condition === 'ABOVE'
-          ? Math.round(coin.defaultPrice * 1.05)
-          : Math.round(coin.defaultPrice * 0.95);
-      setTargetPrice(defaultTarget.toString());
-    }
+  const handleSelectCoin = (coin: CryptoCoin) => {
+    setSelectedCoinId(coin.id);
+    const defaultTarget =
+      condition === 'ABOVE'
+        ? Math.round(coin.currentPrice * 1.05 * 100) / 100
+        : Math.round(coin.currentPrice * 0.95 * 100) / 100;
+    setTargetPrice(defaultTarget.toString());
   };
 
   const handleCreateAlert = (e: React.FormEvent) => {
@@ -73,7 +74,7 @@ export function PriceAlertDialog() {
   };
 
   const setOffsetPercentage = (pct: number) => {
-    const newPrice = Math.round(selectedCoin.defaultPrice * (1 + pct / 100));
+    const newPrice = Math.round(selectedCoin.currentPrice * (1 + pct / 100) * 100) / 100;
     setTargetPrice(newPrice.toString());
     if (pct > 0) setCondition('ABOVE');
     else setCondition('BELOW');
@@ -82,19 +83,23 @@ export function PriceAlertDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="relative border-gray-800 bg-gray-900/60 hover:bg-gray-800 text-gray-300 hover:text-white px-3 flex items-center gap-1.5 transition-all"
-        >
-          <Bell className="w-4 h-4 text-yellow-400" />
-          <span className="hidden sm:inline text-xs font-medium">Alerts</span>
-          {activeCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm shadow-red-500/50">
-              {activeCount}
-            </span>
-          )}
-        </Button>
+        {trigger ? (
+          trigger
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="relative border-gray-800 bg-gray-900/60 hover:bg-gray-800 text-gray-300 hover:text-white px-3 flex items-center gap-1.5 transition-all"
+          >
+            <Bell className="w-4 h-4 text-yellow-400" />
+            <span className="hidden sm:inline text-xs font-medium">Alerts</span>
+            {activeCount > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm shadow-red-500/50">
+                {activeCount}
+              </span>
+            )}
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="max-w-lg bg-gray-950 border border-gray-800 text-white shadow-2xl p-6 max-h-[85vh] overflow-y-auto">
@@ -132,30 +137,12 @@ export function PriceAlertDialog() {
 
         {/* Create Alert Form */}
         <form onSubmit={handleCreateAlert} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-              1. Select Cryptocurrency
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {POPULAR_ALERT_COINS.map((coin) => (
-                <button
-                  key={coin.id}
-                  type="button"
-                  onClick={() => handleSelectCoin(coin.id)}
-                  className={`p-2 rounded-lg border text-left transition-all ${
-                    selectedCoinId === coin.id
-                      ? 'border-yellow-500/80 bg-yellow-500/10 text-white shadow-sm shadow-yellow-500/20'
-                      : 'border-gray-800 bg-gray-900/40 text-gray-400 hover:border-gray-700 hover:text-gray-200'
-                  }`}
-                >
-                  <div className="text-xs font-bold">{coin.symbol}</div>
-                  <div className="text-[10px] text-gray-500 truncate">
-                    ${coin.defaultPrice.toLocaleString()}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Searchable Coin Selector (60+ Coins) */}
+          <SearchableCoinSelect
+            selectedCoinId={selectedCoinId}
+            onSelectCoin={handleSelectCoin}
+            label="1. Select Cryptocurrency (60+ Available)"
+          />
 
           <div className="grid grid-cols-2 gap-3">
             {/* Condition selector */}

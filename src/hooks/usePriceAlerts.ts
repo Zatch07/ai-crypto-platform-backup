@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { COMPREHENSIVE_COINS } from '@/data/cryptoList';
 
 export interface PriceAlert {
   id: string;
@@ -15,17 +16,14 @@ export interface PriceAlert {
 
 const STORAGE_KEY = 'coin_rich_price_alerts';
 
-// Fallback prices if CoinGecko is throttled
-const DEFAULT_COIN_PRICES: Record<string, number> = {
-  bitcoin: 67200,
-  ethereum: 3150,
-  solana: 158,
-  binancecoin: 590,
-  ripple: 0.58,
-  dogecoin: 0.12,
-  cardano: 0.43,
-  'avalanche-2': 27.5,
-};
+// Fallback prices for all 60+ supported coins if CoinGecko is throttled
+const DEFAULT_COIN_PRICES: Record<string, number> = COMPREHENSIVE_COINS.reduce(
+  (acc, c) => {
+    acc[c.id] = c.currentPrice;
+    return acc;
+  },
+  {} as Record<string, number>
+);
 
 export const POPULAR_ALERT_COINS = [
   { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', defaultPrice: 67200 },

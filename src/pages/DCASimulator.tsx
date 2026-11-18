@@ -28,52 +28,8 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-
-interface SupportedCoin {
-  id: string;
-  symbol: string;
-  name: string;
-  currentPrice: number;
-  historicalStartPrice: Record<number, number>; // days -> start price
-}
-
-const SUPPORTED_COINS: SupportedCoin[] = [
-  {
-    id: 'bitcoin',
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    currentPrice: 67200,
-    historicalStartPrice: { 180: 59000, 365: 37500, 730: 17200, 1095: 57000 },
-  },
-  {
-    id: 'ethereum',
-    symbol: 'ETH',
-    name: 'Ethereum',
-    currentPrice: 3150,
-    historicalStartPrice: { 180: 2950, 365: 2050, 730: 1220, 1095: 4200 },
-  },
-  {
-    id: 'solana',
-    symbol: 'SOL',
-    name: 'Solana',
-    currentPrice: 158,
-    historicalStartPrice: { 180: 135, 365: 58, 730: 14, 1095: 210 },
-  },
-  {
-    id: 'binancecoin',
-    symbol: 'BNB',
-    name: 'BNB',
-    currentPrice: 590,
-    historicalStartPrice: { 180: 540, 365: 245, 730: 250, 1095: 580 },
-  },
-  {
-    id: 'avalanche-2',
-    symbol: 'AVAX',
-    name: 'Avalanche',
-    currentPrice: 27.5,
-    historicalStartPrice: { 180: 25, 365: 14.5, 730: 12.8, 1095: 110 },
-  },
-];
+import { COMPREHENSIVE_COINS, CryptoCoin } from '@/data/cryptoList';
+import { SearchableCoinSelect } from '@/components/SearchableCoinSelect';
 
 type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 
@@ -93,7 +49,7 @@ export default function DCASimulator() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const selectedCoin =
-    SUPPORTED_COINS.find((c) => c.id === selectedCoinId) || SUPPORTED_COINS[0];
+    COMPREHENSIVE_COINS.find((c) => c.id === selectedCoinId) || COMPREHENSIVE_COINS[0];
 
   // Fetch or generate realistic historical price trajectory
   useEffect(() => {
@@ -119,8 +75,10 @@ export default function DCASimulator() {
         console.warn('CoinGecko historical fetch rate limited, using synthesized curve:', err);
       }
 
-      // High-fidelity fallback curve based on real historical start and end points
-      const startPrice = selectedCoin.historicalStartPrice[timeframeDays] || selectedCoin.currentPrice * 0.6;
+      // High-fidelity fallback curve based on real historical progression
+      const startMultiplier =
+        timeframeDays === 180 ? 0.85 : timeframeDays === 365 ? 0.55 : timeframeDays === 730 ? 0.35 : 0.65;
+      const startPrice = selectedCoin.currentPrice * startMultiplier;
       const endPrice = selectedCoin.currentPrice;
       const points = Math.min(timeframeDays, 120);
       const now = Date.now();
@@ -354,50 +312,41 @@ export default function DCASimulator() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Asset Selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                  Target Cryptocurrency
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {SUPPORTED_COINS.map((coin) => (
-                    <button
-                      key={coin.id}
-                      type="button"
-                      onClick={() => setSelectedCoinId(coin.id)}
-                      className={`p-2.5 rounded-xl border text-center transition-all ${
-                        selectedCoinId === coin.id
-                          ? 'border-red-500 bg-red-500/10 text-white shadow-md shadow-red-500/20'
-                          : 'border-gray-800 bg-gray-900/40 text-gray-400 hover:border-gray-700 hover:text-white'
-                      }`}
-                    >
-                      <div className="text-xs font-bold">{coin.symbol}</div>
-                      <div className="text-[10px] text-gray-500">{coin.name}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Searchable Asset Selector (60+ Coins) */}
+              <SearchableCoinSelect
+                selectedCoinId={selectedCoinId}
+                onSelectCoin={(coin) => setSelectedCoinId(coin.id)}
+                label="Target Cryptocurrency (60+ Available)"
+              />
 
               {/* Recurring Investment Amount */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Investment Amount
+                    Investment Amount (USD)
                   </label>
-                  <span className="text-sm font-bold text-emerald-400">
-                    ${recurringAmount}
+                  <span className="text-xs text-gray-400">
+                    Per {frequency}
                   </span>
                 </div>
-                <Slider
-                  value={[recurringAmount]}
-                  onValueChange={(val) => setRecurringAmount(val[0])}
-                  min={10}
-                  max={1000}
-                  step={10}
-                  className="py-1"
-                />
-                <div className="flex items-center gap-1.5">
-                  {[25, 50, 100, 250, 500].map((amt) => (
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm font-bold text-gray-400">$</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={recurringAmount || ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setRecurringAmount(isNaN(val) ? 0 : Math.max(0, val));
+                    }}
+                    placeholder="Enter any amount (e.g. 150)"
+                    className="pl-7 bg-gray-950 border-gray-800 text-white font-bold text-sm h-10 focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-gray-500 mr-1">Presets:</span>
+                  {[25, 50, 100, 250, 500, 1000, 2500, 5000].map((amt) => (
                     <button
                       key={amt}
                       type="button"
@@ -408,7 +357,7 @@ export default function DCASimulator() {
                           : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'
                       }`}
                     >
-                      ${amt}
+                      ${amt.toLocaleString()}
                     </button>
                   ))}
                 </div>
