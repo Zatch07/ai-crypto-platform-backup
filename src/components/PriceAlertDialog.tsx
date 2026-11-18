@@ -144,91 +144,95 @@ export function PriceAlertDialog({ trigger }: PriceAlertDialogProps = {}) {
             label="1. Select Cryptocurrency (60+ Available)"
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            {/* Condition selector */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                2. Condition
-              </label>
-              <div className="flex rounded-lg border border-gray-800 bg-gray-900/60 p-1">
-                <button
-                  type="button"
-                  onClick={() => setCondition('ABOVE')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    condition === 'ABOVE'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Rises Above (≥)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCondition('BELOW')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    condition === 'BELOW'
-                      ? 'bg-red-600 text-white shadow'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <TrendingDown className="w-3.5 h-3.5" />
-                  <span>Drops Below (≤)</span>
-                </button>
-              </div>
-            </div>
+          {/* 2. Condition Selector - Clean, full-width, centered segment buttons */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              2. Trigger Condition
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-950 border border-gray-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setCondition('ABOVE')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  condition === 'ABOVE'
+                    ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 shadow-md shadow-emerald-500/10'
+                    : 'border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-900/60'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>Rises Above (≥)</span>
+              </button>
 
-            {/* Target price input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                3. Target Price (USD)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs text-gray-400 font-bold">$</span>
-                <Input
-                  type="number"
-                  step="any"
-                  value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
-                  placeholder="Target price"
-                  className="pl-7 bg-gray-900 border-gray-800 text-white text-xs h-9 focus:border-yellow-500"
-                  required
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setCondition('BELOW')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  condition === 'BELOW'
+                    ? 'bg-rose-500/20 border border-rose-500/50 text-rose-400 shadow-md shadow-rose-500/10'
+                    : 'border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-900/60'
+                }`}
+              >
+                <TrendingDown className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>Drops Below (≤)</span>
+              </button>
             </div>
           </div>
 
-          {/* Quick presets */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-gray-500">Presets:</span>
-            <button
-              type="button"
-              onClick={() => setOffsetPercentage(5)}
-              className="text-[10px] px-2 py-0.5 rounded bg-gray-900 border border-gray-800 text-emerald-400 hover:bg-gray-800"
-            >
-              +5%
-            </button>
-            <button
-              type="button"
-              onClick={() => setOffsetPercentage(10)}
-              className="text-[10px] px-2 py-0.5 rounded bg-gray-900 border border-gray-800 text-emerald-400 hover:bg-gray-800"
-            >
-              +10%
-            </button>
-            <button
-              type="button"
-              onClick={() => setOffsetPercentage(-5)}
-              className="text-[10px] px-2 py-0.5 rounded bg-gray-900 border border-gray-800 text-red-400 hover:bg-gray-800"
-            >
-              -5%
-            </button>
-            <button
-              type="button"
-              onClick={() => setOffsetPercentage(-10)}
-              className="text-[10px] px-2 py-0.5 rounded bg-gray-900 border border-gray-800 text-red-400 hover:bg-gray-800"
-            >
-              -10%
-            </button>
+          {/* 3. Target Price Input */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                3. Target Price (USD)
+              </label>
+              <span className="text-[11px] text-gray-400 font-medium">
+                Current: <span className="text-white font-mono">${selectedCoin.currentPrice >= 1 ? selectedCoin.currentPrice.toLocaleString() : selectedCoin.currentPrice.toFixed(6)}</span>
+              </span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-2.5 text-sm font-bold text-gray-400">$</span>
+              <Input
+                type="number"
+                step="any"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                placeholder="Enter target price"
+                className="pl-8 bg-gray-950 border-gray-800 text-white font-bold text-sm h-10 focus:border-yellow-500"
+                required
+              />
+            </div>
+
+            {/* Quick presets */}
+            <div className="flex items-center flex-wrap gap-1.5 pt-1">
+              <span className="text-[10px] text-gray-500 mr-1">Quick Offsets:</span>
+              <button
+                type="button"
+                onClick={() => setOffsetPercentage(5)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-gray-900 border border-gray-800 text-emerald-400 hover:bg-gray-800 font-medium transition-colors"
+              >
+                +5%
+              </button>
+              <button
+                type="button"
+                onClick={() => setOffsetPercentage(10)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-gray-900 border border-gray-800 text-emerald-400 hover:bg-gray-800 font-medium transition-colors"
+              >
+                +10%
+              </button>
+              <button
+                type="button"
+                onClick={() => setOffsetPercentage(-5)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-gray-900 border border-gray-800 text-rose-400 hover:bg-gray-800 font-medium transition-colors"
+              >
+                -5%
+              </button>
+              <button
+                type="button"
+                onClick={() => setOffsetPercentage(-10)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-gray-900 border border-gray-800 text-rose-400 hover:bg-gray-800 font-medium transition-colors"
+              >
+                -10%
+              </button>
+            </div>
           </div>
 
           <Button
