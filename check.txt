@@ -4,12 +4,22 @@ Things I added:
 
 1. DCA or Dollar Cost Averaging Simulator
 2. Price alerts on the webpage
-3. CI/CD build on jenkins
+3. Packaged the application for the ability to run it on any machine.
 4. Blue-Green deployment for zero downtime.
-5  Packaged the application for the ability to run it on any machine.  
+5. CI/CD build on jenkins with SCM trigger that starts within 1minute of code pushed to github.
+6. The .ENV file did not have the required api keys for the project. So had to create a guest account login system. Then evolved it into creating my own accounts on clerk and supabase, and joining them.   
 
 
 FUTURE
-1. Right now, the deployment is containerized on Docker. The next step is writing Terraform modules to provision the underlying cloud infrastructure on AWS. This would automate the creation of a multi-AZ VPC with public and private subnets, an EKS cluster, managed NAT gateways, and an S3 bucket with DynamoDB for remote state locking. Nothing in the cloud would be provisioned manually.
 
-2. The core foundation of this project is solid: we have automated SCM triggers, multi-stage Docker packaging, secrets isolation, and zero-downtime Blue/Green deployments. My roadmap for taking it to enterprise scale focuses on three pillars: Terraform for reproducible infrastructure, Kubernetes & Helm for autoscaling resilience, and ArgoCD + Prometheus for GitOps automation and production observability.
+My roadmap for taking it to enterprise scale focuses on three pillars: 
+
+1. Terraform for reproducible infrastructure, 
+
+2. Kubernetes & Helm for autoscaling resilience, 
+
+3. ArgoCD + Prometheus for GitOps automation and production observability.
+ 
+
+FEEDBACK:
+On coinrichai.com, I found that the chat agent has no limits to answering user's queries. I tried asking him stuff and he just kept going. So, there should be a limit to how many queries it can answer. We need to edit prompt so that only questions asked related to the website is entertained.
