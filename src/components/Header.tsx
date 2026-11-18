@@ -91,7 +91,7 @@ const Header = () => {
               to="/dca"
               className="text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-1"
             >
-              <Calculator className="w-4 h-4 text-orange-400" />
+              <Calculator className="w-4 h-4" />
               <span>DCA Simulator</span>
             </Link>
             <Link
