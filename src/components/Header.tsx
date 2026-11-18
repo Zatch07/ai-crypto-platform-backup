@@ -8,6 +8,7 @@ import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, Filter, LogOut, 
 import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -103,7 +104,9 @@ const Header = () => {
           </nav>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <PriceAlertDialog />
+
             {clerkUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
