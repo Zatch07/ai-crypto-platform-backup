@@ -22,4 +22,4 @@ My roadmap for taking it to enterprise scale focuses on three pillars:
  
 
 FEEDBACK:
-On coinrichai.com, I found that the chat agent has no limits to answering user's queries. I tried asking him stuff and he just kept going. So, there should be a limit to how many queries it can answer. We need to edit prompt so that only questions asked related to the website is entertained.
+On coinrichai.com, I found that the chat agent has no limits to answering user's queries. I tried asking him stuff and he just kept going. So, there should be a limit to how many queries it can answer. We need to also edit the initial prompt so that only questions asked related to the website is entertained.
