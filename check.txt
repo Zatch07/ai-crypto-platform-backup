@@ -3,12 +3,21 @@ This is a random file which i am creating just for testing. test 1
 Things I added:
 
 1. DCA or Dollar Cost Averaging Simulator
-2. Price alerts on the webpage
+2. Added price alerts for the webpage.
 3. Packaged the application for the ability to run it on any machine.
 4. Blue-Green deployment for zero downtime.
 5. CI/CD build on jenkins with SCM trigger that starts within 1minute of code pushed to github.
-6. The .ENV file did not have the required api keys for the project. So had to create a guest account login system. Then evolved it into creating my own accounts on clerk and supabase, and joining them.   
+6. The .ENV file did not have the required api keys for the project. So had to create a guest account login system. Then evolved it into creating my own accounts on clerk and supabase, and joining them. 
+7. Made it so that the build starts within 1 minute of pushing a change to the github repo.
+8. Prometheus & Grafana Observability: Created a full monitoring pipeline. Added a Prometheus telemetry exporter (/api/metrics) tracking Node.js V8 memory (heap/RSS), CPU, uptime, and request counters. Configured 5s high-resolution Prometheus scrapers and auto-provisioned Grafana dashboards on port 3001 with pre-built telemetry panels.
 
+MONITORING PORTS & COMMANDS:
+- Web Application: http://localhost:3000 (Proxy -> Blue/Green)
+- Jenkins CI/CD: http://localhost:8080
+- Prometheus Engine: http://localhost:9090
+- Grafana Telemetry: http://localhost:3001 (Auto-loaded dashboard: "Crypto Platform - Production Telemetry")
+- Start Monitoring: docker compose -f docker-compose.monitoring.yml up -d
+- Stop Monitoring: docker compose -f docker-compose.monitoring.yml down
 
 FUTURE
 

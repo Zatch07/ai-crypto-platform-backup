@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # 1. Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 2. Live Active Web Application (via Nginx reverse proxy on port 3000)
+  - job_name: 'crypto-web-app'
+    metrics_path: '/api/metrics'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['host.docker.internal:3000']
+        labels:
+          app: 'ai-crypto-platform'
+          tier: 'frontend-proxy'
+
+  # 3. Direct Blue & Green Container Monitoring (Tracks both slots during zero-downtime cutover)
+  - job_name: 'crypto-blue-green-direct'
+    metrics_path: '/api/metrics'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['ai-crypto-blue:3000']
+        labels:
+          slot: 'blue'
+      - targets: ['ai-crypto-green:3000']
+        labels:
+          slot: 'green'
+
+  # 4. Jenkins CI/CD Controller Pipeline Metrics
+  - job_name: 'jenkins-ci'
+    metrics_path: '/prometheus/'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['jenkins-ci:8080']
+        labels:
+          service: 'ci-cd-pipeline'
