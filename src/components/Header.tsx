@@ -4,10 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, Filter, LogOut, User } from "lucide-react";
+import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, Filter, LogOut, User, Calculator, Bell } from "lucide-react";
 import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -87,6 +88,13 @@ const Header = () => {
               <span>Screener</span>
             </Link>
             <Link
+              to="/dca"
+              className="text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-1"
+            >
+              <Calculator className="w-4 h-4" />
+              <span>DCA Simulator</span>
+            </Link>
+            <Link
               to="/chat"
               className="text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-1"
             >
@@ -103,7 +111,12 @@ const Header = () => {
           </nav>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Desktop Only Price Alerts (Hidden on mobile to preserve logo space) */}
+            <div className="hidden md:flex items-center">
+              <PriceAlertDialog />
+            </div>
+
             {clerkUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -191,6 +204,13 @@ const Header = () => {
                 Screener
               </Link>
               <Link
+                to="/dca"
+                className="text-gray-300 hover:text-white block px-3 py-2 text-base font-medium transition-colors duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                DCA Simulator
+              </Link>
+              <Link
                 to="/chat"
                 className="text-gray-300 hover:text-white block px-3 py-2 text-base font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
@@ -204,6 +224,25 @@ const Header = () => {
               >
                 NFT
               </Link>
+
+              {/* Mobile Drawer Alerts Button */}
+              <div className="pt-2 border-t border-gray-800">
+                <PriceAlertDialog trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 text-base font-medium text-yellow-400 hover:text-yellow-300 rounded-lg bg-yellow-500/10 border border-yellow-500/20 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Bell className="w-5 h-5 text-yellow-400" />
+                      <span>Price Alerts</span>
+                    </div>
+                    <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full font-semibold">
+                      Set Alerts
+                    </span>
+                  </button>
+                } />
+              </div>
             </div>
           </div>
         )}
